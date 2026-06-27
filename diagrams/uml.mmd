@@ -2,7 +2,7 @@ classDiagram
     class Owner {
         +String name
         +List petList
-        +List taskList
+        +Scheduler scheduler
         +addPet(pet)
         +removePet(pet)
         +getTasks() List
@@ -20,6 +20,7 @@ classDiagram
         +String description
         +bool completed
         +Date dueDate
+        +Pet pet
         +isDone() bool
     }
 
@@ -33,6 +34,7 @@ classDiagram
     }
 
     Owner "1" --> "many" Pet : has
-    Owner "1" --> "many" Task : has
+    Owner "1" --> "1" Scheduler : scheduled by
     Scheduler "1" --> "1" Owner : manages
-    Scheduler --> Task : schedules
+    Scheduler "1" --> "many" Task : owns
+    Task "many" --> "1" Pet : for

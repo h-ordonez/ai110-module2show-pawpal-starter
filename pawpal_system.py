@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import date
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 
 @dataclass
@@ -19,6 +19,7 @@ class Task:
     description: str
     completed: bool
     dueDate: date
+    pet: Pet
 
     def isDone(self) -> bool:
         pass
@@ -28,7 +29,9 @@ class Task:
 class Owner:
     name: str
     petList: List[Pet] = field(default_factory=list)
-    taskList: List[Task] = field(default_factory=list)
+    # Back-reference to the Scheduler, which is the source of truth for tasks.
+    # Set when the Owner is attached to a Scheduler; getTasks() delegates to it.
+    scheduler: Optional["Scheduler"] = None
 
     def addPet(self, pet: Pet) -> None:
         pass
@@ -37,6 +40,7 @@ class Owner:
         pass
 
     def getTasks(self) -> List[Task]:
+        # Delegates to the Scheduler rather than holding its own task list.
         pass
 
 
@@ -44,6 +48,10 @@ class Owner:
 class Scheduler:
     owner: Owner
     schedule: Dict = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        # Complete the bidirectional link so Owner.getTasks() can delegate here.
+        self.owner.scheduler = self
 
     def scheduleTask(self, task: Task, date: date) -> None:
         pass
