@@ -7,12 +7,25 @@ There are three core actions a user should be able to perform. First, the user s
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+
+    My initial UML design was based on owners, pets, tasks, and schedulers.
+    
+
 - What classes did you include, and what responsibilities did you assign to each?
+
+    My UML design contains four classes. They are the Owner, Pet, Task, and Scheduler. Thwe owner has one or many pets. The owner has zero or many tasks. The scheduler manages an owner. Finally, the scheduler assigns tasks.
+
+    The owner was responsible for having pets and scheduling tasks. The pet class was nothing more than a data container with no methods. The task class was responsible for checking whether a task had been completed or not. I had initially left the scheduler class blank because I was somewhat lost on what its responsibilites should be after creating the other classes. Fortunately, Claude helped in this regard.
 
 **b. Design changes**
 
 - Did your design change during implementation?
+
+    Yes.
+
 - If yes, describe at least one change and why you made it.
+
+    A change I made was to add a Pet reference to Task. This was because Claude explained that the getTasksByPet method would not be able to be implemented otherwise. The motiviation behind implementing this change was due to the fact that an Owner might want to know what tasks they have to complete for a particular pet, and there would have been no way of knowing this with the previous design.
 
 ---
 
