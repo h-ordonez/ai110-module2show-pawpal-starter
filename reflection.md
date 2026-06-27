@@ -2,6 +2,8 @@
 
 ## 1. System Design
 
+There are three core actions a user should be able to perform. First, the user should be able to add a pet. Second, a user should be able to schedule tasks. Finally, a user should be able to get notification reminders of the tasks that need to be completed.
+
 **a. Initial design**
 
 - Briefly describe your initial UML design.

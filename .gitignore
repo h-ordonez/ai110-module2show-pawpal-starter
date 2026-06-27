@@ -3,3 +3,20 @@ __pycache__/
 .venv_new/
 .pytest_cache/
 .DS_Store
+
+# Environment variables (API keys, secrets)
+.env
+.env.local
+.env*.local
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+
+# Scratch files
+NOTES.md
