@@ -2,7 +2,6 @@ classDiagram
     class Owner {
         +String name
         +List petList
-        +Scheduler scheduler
         +addPet(pet)
         +removePet(pet)
         +getTasks() List
@@ -12,29 +11,34 @@ classDiagram
         +String name
         +String species
         +int age
-        +getNeeds() String
+        +List taskList
     }
 
     class Task {
-        +String title
         +String description
+        +Time time
+        +Frequency frequency
         +bool completed
-        +Date dueDate
-        +Pet pet
-        +isDone() bool
+        +markCompleted()
+    }
+
+    class Frequency {
+        <<enumeration>>
+        DAILY
+        WEEKLY
+        MONTHLY
     }
 
     class Scheduler {
         +Owner owner
-        +Map schedule
-        +scheduleTask(task, date)
-        +removeTask(task)
-        +getUpcomingTasks() List
+        +scheduleTask(pet, task)
+        +removeTask(pet, task)
         +getTasksByPet(pet) List
+        +getAllTasks() List
     }
 
     Owner "1" --> "many" Pet : has
-    Owner "1" --> "1" Scheduler : scheduled by
+    Pet "1" --> "many" Task : has
+    Task "many" --> "1" Frequency : recurs
     Scheduler "1" --> "1" Owner : manages
-    Scheduler "1" --> "many" Task : owns
-    Task "many" --> "1" Pet : for
+    Scheduler ..> Task : organizes
