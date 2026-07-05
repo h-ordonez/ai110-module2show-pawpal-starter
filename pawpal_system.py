@@ -2,7 +2,7 @@ import calendar
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 class Frequency(Enum):
@@ -119,3 +119,51 @@ class Scheduler:
         """Return only tasks whose completed flag matches, from tasks (default: all tasks)."""
         tasks = self.getAllTasks() if tasks is None else tasks
         return [t for t in tasks if t.completed == completed]
+
+    def _pending_slots(self):
+        """Group each pet's still-pending tasks by (dueDate, time) slot."""
+        slots = {}
+        for pet in self.owner.petList:
+            for task in pet.taskList:
+                if not task.completed:
+                    slots.setdefault((task.dueDate, task.time), []).append((pet, task))
+        return slots
+
+    def find_same_pet_conflicts(self) -> List[Tuple[Pet, Task, Task]]:
+        """Return (pet, task1, task2) triples where one pet has 2+ pending tasks in the same slot."""
+        conflicts = []
+        for slot in self._pending_slots().values():
+            for i in range(len(slot)):
+                for j in range(i + 1, len(slot)):
+                    pet_i, task_i = slot[i]
+                    pet_j, task_j = slot[j]
+                    if pet_i is pet_j:
+                        conflicts.append((pet_i, task_i, task_j))
+        return conflicts
+
+    def find_cross_pet_conflicts(self) -> List[Tuple[Pet, Task, Pet, Task]]:
+        """Return (pet1, task1, pet2, task2) quadruples where two different pets share a slot."""
+        conflicts = []
+        for slot in self._pending_slots().values():
+            for i in range(len(slot)):
+                for j in range(i + 1, len(slot)):
+                    pet_i, task_i = slot[i]
+                    pet_j, task_j = slot[j]
+                    if pet_i is not pet_j:
+                        conflicts.append((pet_i, task_i, pet_j, task_j))
+        return conflicts
+
+    def get_conflict_warnings(self) -> List[str]:
+        """Return a human-readable warning message for every detected scheduling conflict."""
+        warnings = []
+        for pet, task1, task2 in self.find_same_pet_conflicts():
+            warnings.append(
+                f"Conflict: {pet.name} has '{task1.description}' and '{task2.description}' "
+                f"both scheduled at {task1.time} on {task1.dueDate}."
+            )
+        for pet1, task1, pet2, task2 in self.find_cross_pet_conflicts():
+            warnings.append(
+                f"Conflict: {pet1.name}'s '{task1.description}' and {pet2.name}'s "
+                f"'{task2.description}' are both scheduled at {task1.time} on {task1.dueDate}."
+            )
+        return warnings

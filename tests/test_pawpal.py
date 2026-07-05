@@ -176,3 +176,87 @@ def test_complete_task_monthly_wraps_into_next_year():
     next_task = scheduler.complete_task(pet, task)
 
     assert next_task.dueDate == date(2027, 1, 15)
+
+
+def test_find_same_pet_conflicts_detects_overlap_for_one_pet():
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    walk = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    meds = Task("Give meds", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(pet, walk)
+    scheduler.scheduleTask(pet, meds)
+
+    conflicts = scheduler.find_same_pet_conflicts()
+
+    assert conflicts == [(pet, walk, meds)]
+    assert scheduler.find_cross_pet_conflicts() == []
+
+
+def test_find_cross_pet_conflicts_detects_overlap_across_pets():
+    owner = Owner("Sam")
+    rex = Pet("Rex", "dog", 3)
+    whiskers = Pet("Whiskers", "cat", 5)
+    owner.addPet(rex)
+    owner.addPet(whiskers)
+    scheduler = Scheduler(owner)
+
+    rex_walk = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    whiskers_breakfast = Task("Breakfast", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(rex, rex_walk)
+    scheduler.scheduleTask(whiskers, whiskers_breakfast)
+
+    conflicts = scheduler.find_cross_pet_conflicts()
+
+    assert conflicts == [(rex, rex_walk, whiskers, whiskers_breakfast)]
+    assert scheduler.find_same_pet_conflicts() == []
+
+
+def test_conflicts_ignore_different_times_and_due_dates():
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    scheduler.scheduleTask(pet, Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15)))
+    scheduler.scheduleTask(pet, Task("Evening walk", "18:00", Frequency.DAILY, dueDate=date(2026, 1, 15)))
+    scheduler.scheduleTask(pet, Task("Vet checkup", "07:00", Frequency.MONTHLY, dueDate=date(2026, 1, 16)))
+
+    assert scheduler.find_same_pet_conflicts() == []
+    assert scheduler.find_cross_pet_conflicts() == []
+
+
+def test_conflicts_ignore_completed_tasks():
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    walk = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    meds = Task("Give meds", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(pet, walk)
+    scheduler.scheduleTask(pet, meds)
+    walk.markCompleted()
+
+    assert scheduler.find_same_pet_conflicts() == []
+
+
+def test_get_conflict_warnings_reports_both_kinds():
+    owner = Owner("Sam")
+    rex = Pet("Rex", "dog", 3)
+    whiskers = Pet("Whiskers", "cat", 5)
+    owner.addPet(rex)
+    owner.addPet(whiskers)
+    scheduler = Scheduler(owner)
+
+    scheduler.scheduleTask(rex, Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15)))
+    scheduler.scheduleTask(rex, Task("Give meds", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15)))
+    scheduler.scheduleTask(whiskers, Task("Breakfast", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15)))
+
+    warnings = scheduler.get_conflict_warnings()
+
+    assert len(warnings) == 3  # 1 same-pet pair + 2 cross-pet pairs (rex's 2 tasks x whiskers' 1 task)
+    assert any("Rex has" in w for w in warnings)
+    assert any("Rex's" in w and "Whiskers" in w for w in warnings)

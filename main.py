@@ -48,6 +48,13 @@ def main() -> None:
     scheduler.scheduleTask(whiskers, breakfast)
     scheduler.scheduleTask(whiskers, litter_cleaning)
 
+    # Intentionally overlapping with Rex's evening walk, to demonstrate conflict detection:
+    # same-pet (Rex: walk + meds) and cross-pet (Rex vs. Whiskers) at 6:30 PM today.
+    give_meds = Task("Give meds", "18:30", Frequency.DAILY, dueDate=today)
+    grooming = Task("Grooming", "18:30", Frequency.WEEKLY, dueDate=today)
+    scheduler.scheduleTask(rex, give_meds)
+    scheduler.scheduleTask(whiskers, grooming)
+
     print("Today's Schedule (before completing anything)")
     for pet in owner.petList:
         print(f"\n{pet.name} ({pet.species}):")
@@ -75,6 +82,20 @@ def main() -> None:
 
     print("\nfilter_by_status(completed=False):")
     print_tasks(scheduler.filter_by_status(False))
+
+    print("\nfind_same_pet_conflicts():")
+    for pet, task1, task2 in scheduler.find_same_pet_conflicts():
+        print(f"  {pet.name}: '{task1.description}' vs '{task2.description}' "
+              f"at {format_12h(task1.time)} on {task1.dueDate}")
+
+    print("\nfind_cross_pet_conflicts():")
+    for pet1, task1, pet2, task2 in scheduler.find_cross_pet_conflicts():
+        print(f"  {pet1.name}'s '{task1.description}' vs {pet2.name}'s '{task2.description}' "
+              f"at {format_12h(task1.time)} on {task1.dueDate}")
+
+    print("\nget_conflict_warnings():")
+    for warning in scheduler.get_conflict_warnings():
+        print(f"  [!] {warning}")
 
 
 if __name__ == "__main__":

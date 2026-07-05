@@ -134,7 +134,8 @@ else:
 st.divider()
 
 st.subheader("Build Schedule")
-st.caption("Uses Scheduler.getAllTasks() to pull every task across the owner's pets, ordered by time.")
+st.caption("Uses Scheduler.getAllTasks() to pull every task across the owner's pets, ordered by time, "
+            "and flags overlaps via Scheduler.get_conflict_warnings().")
 
 if st.button("Generate schedule"):
     pet_tasks = [
@@ -159,3 +160,6 @@ if st.button("Generate schedule"):
                 for t in ordered
             ]
         )
+
+        for warning in st.session_state.scheduler.get_conflict_warnings():
+            st.warning(warning)
