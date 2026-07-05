@@ -82,10 +82,10 @@ Sample test output:
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | Scheduler.sort_by_time | Sorts by HH:MM |
+| Filtering | Scheduler.filter_by_pet & Scheduler.filter_by_status | Shows tasks based on the pet & shows tasks based on done/pending status |
+| Conflict handling | Scheduler.find_same_pet_conflicts & Scheduler.find_cross_pet_conflicts | Detects tasks scheduled at the same time for the same pet & detects different tasks scheduled at the same time for different pets |
+| Recurring tasks | Scheduler.complete_task | Schedules the next task based on daily, weekly, or monthly frequency |
 
 ## 📸 Demo Walkthrough
 
