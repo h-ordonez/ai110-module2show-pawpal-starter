@@ -260,3 +260,36 @@ def test_get_conflict_warnings_reports_both_kinds():
     assert len(warnings) == 3  # 1 same-pet pair + 2 cross-pet pairs (rex's 2 tasks x whiskers' 1 task)
     assert any("Rex has" in w for w in warnings)
     assert any("Rex's" in w and "Whiskers" in w for w in warnings)
+
+
+def test_cross_pet_conflicts_exempt_identical_shared_tasks():
+    owner = Owner("Sam")
+    rex = Pet("Rex", "dog", 3)
+    fido = Pet("Fido", "dog", 2)
+    owner.addPet(rex)
+    owner.addPet(fido)
+    scheduler = Scheduler(owner)
+
+    rex_walk = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    fido_walk = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(rex, rex_walk)
+    scheduler.scheduleTask(fido, fido_walk)
+
+    assert scheduler.find_cross_pet_conflicts() == []
+    assert scheduler.get_conflict_warnings() == []
+
+
+def test_cross_pet_conflicts_still_flag_different_tasks_at_same_time():
+    owner = Owner("Sam")
+    rex = Pet("Rex", "dog", 3)
+    whiskers = Pet("Whiskers", "cat", 5)
+    owner.addPet(rex)
+    owner.addPet(whiskers)
+    scheduler = Scheduler(owner)
+
+    rex_walk = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    whiskers_breakfast = Task("Breakfast", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(rex, rex_walk)
+    scheduler.scheduleTask(whiskers, whiskers_breakfast)
+
+    assert scheduler.find_cross_pet_conflicts() == [(rex, rex_walk, whiskers, whiskers_breakfast)]

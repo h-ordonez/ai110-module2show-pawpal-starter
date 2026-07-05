@@ -149,11 +149,16 @@ class Scheduler:
         ]
 
     def find_cross_pet_conflicts(self) -> List[Tuple[Pet, Task, Pet, Task]]:
-        """Return (pet1, task1, pet2, task2) quadruples where two different pets share a slot."""
+        """Return (pet1, task1, pet2, task2) quadruples where two different pets share a slot.
+
+        Two pets sharing the identical task (e.g. both taken for a "Morning walk" or
+        "Vet checkup" together) isn't a conflict - the owner is doing one activity
+        with both pets at once, not two competing activities.
+        """
         return [
             (pet_i, task_i, pet_j, task_j)
             for (pet_i, task_i), (pet_j, task_j) in self._pending_slot_pairs()
-            if pet_i is not pet_j
+            if pet_i is not pet_j and task_i.description != task_j.description
         ]
 
     def get_conflict_warnings(self) -> List[str]:
@@ -165,7 +170,7 @@ class Scheduler:
                     f"Conflict: {pet_i.name} has '{task_i.description}' and '{task_j.description}' "
                     f"both scheduled at {task_i.time} on {task_i.dueDate}."
                 )
-            else:
+            elif task_i.description != task_j.description:
                 warnings.append(
                     f"Conflict: {pet_i.name}'s '{task_i.description}' and {pet_j.name}'s "
                     f"'{task_j.description}' are both scheduled at {task_i.time} on {task_i.dueDate}."

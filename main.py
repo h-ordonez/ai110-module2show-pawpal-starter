@@ -21,9 +21,11 @@ def main() -> None:
     owner = Owner("Sam")
 
     rex = Pet("Rex", "dog", 3)
+    fido = Pet("Fido", "dog", 4)
     whiskers = Pet("Whiskers", "cat", 5)
 
     owner.addPet(rex)
+    owner.addPet(fido)
     owner.addPet(whiskers)
 
     scheduler = Scheduler(owner)
@@ -54,6 +56,12 @@ def main() -> None:
     grooming = Task("Grooming", "18:30", Frequency.WEEKLY, dueDate=today)
     scheduler.scheduleTask(rex, give_meds)
     scheduler.scheduleTask(whiskers, grooming)
+
+    # Fido shares Rex's exact "Evening walk" at the same time - the owner is walking
+    # both dogs together, so this pair is exempt from cross-pet conflict detection,
+    # even though Fido's walk still conflicts with Whiskers' differently-named Grooming.
+    fido_walk = Task("Evening walk", "18:30", Frequency.DAILY, dueDate=today)
+    scheduler.scheduleTask(fido, fido_walk)
 
     print("Today's Schedule (before completing anything)")
     for pet in owner.petList:
