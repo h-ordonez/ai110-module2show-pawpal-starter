@@ -36,10 +36,14 @@ There are three core actions a user should be able to perform. First, the user s
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+One constraint the scheduler considers is scheduling conflicts. I thought this was important because the purpose of the app is to allow pet owners to organize themselves properly to provide proper care for their pets. Without considering scheduling conflicts, this would defeat the app's purpose.
+
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
+
+The scheduler makes the tradeoff of not considering task duration. This is because the app is meant to be used by a wide array of pet owners. Some owners may allow tasks to run longer than other owners would. I do not believe it is the app developer's responsibility to tell a user how much time they should spend walking their dog for example. The downside is that users may end up ignoring their schedule and running late for other tasks. In the future, perhaps a notification system can be implemented in the app to help keep pet owners on track, but ultimately it is up to the owner to determine to what extent they want to stick to the schedule they have created.
 
 ---
 
