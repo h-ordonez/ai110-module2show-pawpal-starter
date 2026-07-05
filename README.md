@@ -91,7 +91,18 @@ My confidence level in the system's reliability is 4/5 stars. This is because th
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+PawPal+ doesn't just store a flat task list — the `Scheduler` implements a few small algorithms to keep that list organized and useful:
+
+### ✨ Features
+
+- **Task sorting** — `Scheduler.sort_by_time` turns each task's `"HH:MM"` string into an `(hour, minute)` tuple and sorts on that, so tasks land in true chronological order (no lexicographic surprises like `"9:00"` sorting after `"10:00"`). Standard O(n log n) sort under the hood.
+- **Filtering** — `Scheduler.filter_by_pet` and `Scheduler.filter_by_status` do a single O(n) pass over the task list. Pet filtering checks *identity*, not value — a task is only "Rex's" if it's literally the same object in Rex's list, so two tasks that happen to look identical (same description/time) but belong to different pets never get mixed up.
+- **Conflict detection** — `find_same_pet_conflicts`, `find_cross_pet_conflicts`, and `get_conflict_warnings` avoid the naive O(n²) approach of comparing every task to every other task. `_pending_slots` first buckets all pending tasks by `(due date, time)` in a single O(n) pass; only tasks that land in the *same* slot are ever compared to each other. From there:
+  - **Same-pet conflict**: one pet has two pending tasks in the same slot (e.g. Rex can't be walked and bathed at 7:00 AM).
+  - **Cross-pet conflict**: two different pets have pending tasks in the same slot — unless it's the exact same activity (e.g. both pets going on one walk together isn't a conflict, it's one event).
+- **Recurring tasks** — `Scheduler.complete_task` marks a task done, then `Task.next_due_date` computes when it recurs next based on `Frequency`: daily adds 1 day, weekly adds 7 days, monthly rolls to the same day next month (clamped to the last valid day via `calendar.monthrange`, so e.g. Jan 31 → Feb 28). A new `Task` is created for that date and automatically added back to the pet's schedule, so routine care never has to be re-entered by hand.
+
+### Quick reference
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
@@ -104,10 +115,103 @@ My confidence level in the system's reliability is 4/5 stars. This is because th
 
 Describe your app in numbered steps so a reader can follow along without watching a video:
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+1. Enter your name in the Owner field
+2. Add one or more pets
+3. Add zero or more tasks for each pet
+4. Observe the auto-generated schedule for the tasks you have entered
+5. Mark tasks as done for each pet
+6. Optionally, you can remove pets/tasks
 
+`main.py` CLI output:
+```
+(.venv) PS C:\Users\hordo\Projects\ai110-module2show-pawpal-starter> python main.py
+Today's Schedule (before completing anything)
+
+Rex (dog):
+  2026-01-15 06:30 PM - Evening walk (pending)
+  2026-01-15 07:00 AM - Morning walk (pending)
+  2026-01-15 12:00 PM - Lunchtime feeding (pending)
+  2026-01-15 06:30 PM - Give meds (pending)
+
+Fido (dog):
+  2026-01-15 06:30 PM - Evening walk (pending)
+
+Whiskers (cat):
+  2026-01-31 04:00 PM - Vet checkup (pending)
+  2026-01-15 08:00 AM - Breakfast (pending)
+  2026-01-15 01:30 PM - Litter box cleaning (pending)
+  2026-01-15 06:30 PM - Grooming (pending)
+
+Completing Morning walk, Breakfast, Litter box cleaning, and Vet checkup...
+
+Today's Schedule (after completing - note the auto-scheduled next occurrences)
+
+Rex (dog):
+  2026-01-15 06:30 PM - Evening walk (pending)
+  2026-01-15 07:00 AM - Morning walk (done)
+  2026-01-15 12:00 PM - Lunchtime feeding (pending)
+  2026-01-15 06:30 PM - Give meds (pending)
+  2026-01-16 07:00 AM - Morning walk (pending)
+
+Fido (dog):
+  2026-01-15 06:30 PM - Evening walk (pending)
+
+Whiskers (cat):
+  2026-01-31 04:00 PM - Vet checkup (done)
+  2026-01-15 08:00 AM - Breakfast (done)
+  2026-01-15 01:30 PM - Litter box cleaning (done)
+  2026-01-15 06:30 PM - Grooming (pending)
+  2026-01-16 08:00 AM - Breakfast (pending)
+  2026-01-16 01:30 PM - Litter box cleaning (pending)
+  2026-02-28 04:00 PM - Vet checkup (pending)
+
+filter_by_pet(rex):
+  2026-01-15 06:30 PM - Evening walk (pending)
+  2026-01-15 07:00 AM - Morning walk (done)
+  2026-01-15 12:00 PM - Lunchtime feeding (pending)
+  2026-01-15 06:30 PM - Give meds (pending)
+  2026-01-16 07:00 AM - Morning walk (pending)
+
+filter_by_pet(whiskers):
+  2026-01-31 04:00 PM - Vet checkup (done)
+  2026-01-15 08:00 AM - Breakfast (done)
+  2026-01-15 01:30 PM - Litter box cleaning (done)
+  2026-01-15 06:30 PM - Grooming (pending)
+  2026-01-16 08:00 AM - Breakfast (pending)
+  2026-01-16 01:30 PM - Litter box cleaning (pending)
+  2026-02-28 04:00 PM - Vet checkup (pending)
+
+filter_by_status(completed=True):
+  2026-01-15 07:00 AM - Morning walk (done)
+  2026-01-31 04:00 PM - Vet checkup (done)
+  2026-01-15 08:00 AM - Breakfast (done)
+  2026-01-15 01:30 PM - Litter box cleaning (done)
+
+filter_by_status(completed=False):
+  2026-01-15 06:30 PM - Evening walk (pending)
+  2026-01-15 12:00 PM - Lunchtime feeding (pending)
+  2026-01-15 06:30 PM - Give meds (pending)
+  2026-01-16 07:00 AM - Morning walk (pending)
+  2026-01-15 06:30 PM - Evening walk (pending)
+  2026-01-15 06:30 PM - Grooming (pending)
+  2026-01-16 08:00 AM - Breakfast (pending)
+  2026-01-16 01:30 PM - Litter box cleaning (pending)
+  2026-02-28 04:00 PM - Vet checkup (pending)
+
+find_same_pet_conflicts():
+  Rex: 'Evening walk' vs 'Give meds' at 06:30 PM on 2026-01-15
+
+find_cross_pet_conflicts():
+  Rex's 'Evening walk' vs Whiskers's 'Grooming' at 06:30 PM on 2026-01-15
+  Rex's 'Give meds' vs Fido's 'Evening walk' at 06:30 PM on 2026-01-15
+  Rex's 'Give meds' vs Whiskers's 'Grooming' at 06:30 PM on 2026-01-15
+  Fido's 'Evening walk' vs Whiskers's 'Grooming' at 06:30 PM on 2026-01-15
+
+get_conflict_warnings():
+  [!] Conflict: Rex has 'Evening walk' and 'Give meds' both scheduled at 18:30 on 2026-01-15.
+  [!] Conflict: Rex's 'Evening walk' and Whiskers's 'Grooming' are both scheduled at 18:30 on 2026-01-15.
+  [!] Conflict: Rex's 'Give meds' and Fido's 'Evening walk' are both scheduled at 18:30 on 2026-01-15.
+  [!] Conflict: Rex's 'Give meds' and Whiskers's 'Grooming' are both scheduled at 18:30 on 2026-01-15.
+  [!] Conflict: Fido's 'Evening walk' and Whiskers's 'Grooming' are both scheduled at 18:30 on 2026-01-15.
+```
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->

@@ -54,10 +54,14 @@ The scheduler makes the tradeoff of not considering task duration. This is becau
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
 - What kinds of prompts or questions were most helpful?
 
+I used AI in all aspects of the project, including: refactoring, code generation, and design implementation. I had some questions regarding my initial design. Claude was instrumental in helping guide me on some choices I should make in terms of who should own tasks. Class design is not one of my strengths and Claude made some suggestions that were logical and considered that I had not initially.
+
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
 - How did you evaluate or verify what the AI suggested?
+
+One case where I did not accept Claude's suggestion as it was, was when it suggested how users should be warned of scheduling conflicts. I ran the app myself and realized that the message that was generated for scheduling conflicts was something that I could easily miss. I suggested to Claude that the message should be a pop-up message that explained the conflict to the user and asked them if they want to proceed anyway. This way, users are steered to acknowledge the warning.
 
 ---
 
@@ -68,10 +72,14 @@ The scheduler makes the tradeoff of not considering task duration. This is becau
 - What behaviors did you test?
 - Why were these tests important?
 
+I instructed Claude to test all changes early on. Anytime a new feature was implemented Claude created a test for all methods involved and ran them. I also made sure to test the app myself by running it after every feature. This is because I wanted to see for myself that the app was working as intended.
+
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
 - What edge cases would you test next if you had more time?
+
+I'm fairly confident that the scheduler works correctly. The one edge case I would test next has to do with running concurrent tasks. Some tasks can be done simultaneously by a pet owner, but not necessarily all of them. My implementation is currently able to handle identical tasks for different pets (e.g., taking two dogs for a walk), but it currently doesn't consider a case where a friend walks one dog, while the pet owner takes the other dog to the vet.
 
 ---
 
@@ -81,10 +89,16 @@ The scheduler makes the tradeoff of not considering task duration. This is becau
 
 - What part of this project are you most satisfied with?
 
+I am most satisfied with being able to implement the filtering logic. This is because it was not clear to me from the beginning what the best way would be to do it. Claude was super helpful in this regard, and the filtering logic worked as I had envisioned it.
+
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
 
+I would do more work on the UI. It still seems unpolished. I would expand the schedule itself to allow users to mark tasks as done. Currently, the user has to go back up to the pet section and mark tasks as being complete there.
+
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+
+I learned how powerful Claude is when it comes to design. My first implementation was a little convoluted in terms of what classes did what. However, this also made me aware of how my own lack of experience can make Claude lead me and my projects to a place I had not intended. This shows how important it is for me to still do my own research to have a deeper understanding of system design.
