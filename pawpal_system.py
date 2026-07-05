@@ -129,41 +129,45 @@ class Scheduler:
                     slots.setdefault((task.dueDate, task.time), []).append((pet, task))
         return slots
 
-    def find_same_pet_conflicts(self) -> List[Tuple[Pet, Task, Task]]:
-        """Return (pet, task1, task2) triples where one pet has 2+ pending tasks in the same slot."""
-        conflicts = []
+    def _pending_slot_pairs(self):
+        """Yield every pair of pending tasks sharing a (dueDate, time) slot, once each.
+
+        Groups by slot first (one hash-table pass) so pairs are only ever compared
+        within a slot, never across the full task list.
+        """
         for slot in self._pending_slots().values():
             for i in range(len(slot)):
                 for j in range(i + 1, len(slot)):
-                    pet_i, task_i = slot[i]
-                    pet_j, task_j = slot[j]
-                    if pet_i is pet_j:
-                        conflicts.append((pet_i, task_i, task_j))
-        return conflicts
+                    yield slot[i], slot[j]
+
+    def find_same_pet_conflicts(self) -> List[Tuple[Pet, Task, Task]]:
+        """Return (pet, task1, task2) triples where one pet has 2+ pending tasks in the same slot."""
+        return [
+            (pet_i, task_i, task_j)
+            for (pet_i, task_i), (pet_j, task_j) in self._pending_slot_pairs()
+            if pet_i is pet_j
+        ]
 
     def find_cross_pet_conflicts(self) -> List[Tuple[Pet, Task, Pet, Task]]:
         """Return (pet1, task1, pet2, task2) quadruples where two different pets share a slot."""
-        conflicts = []
-        for slot in self._pending_slots().values():
-            for i in range(len(slot)):
-                for j in range(i + 1, len(slot)):
-                    pet_i, task_i = slot[i]
-                    pet_j, task_j = slot[j]
-                    if pet_i is not pet_j:
-                        conflicts.append((pet_i, task_i, pet_j, task_j))
-        return conflicts
+        return [
+            (pet_i, task_i, pet_j, task_j)
+            for (pet_i, task_i), (pet_j, task_j) in self._pending_slot_pairs()
+            if pet_i is not pet_j
+        ]
 
     def get_conflict_warnings(self) -> List[str]:
         """Return a human-readable warning message for every detected scheduling conflict."""
         warnings = []
-        for pet, task1, task2 in self.find_same_pet_conflicts():
-            warnings.append(
-                f"Conflict: {pet.name} has '{task1.description}' and '{task2.description}' "
-                f"both scheduled at {task1.time} on {task1.dueDate}."
-            )
-        for pet1, task1, pet2, task2 in self.find_cross_pet_conflicts():
-            warnings.append(
-                f"Conflict: {pet1.name}'s '{task1.description}' and {pet2.name}'s "
-                f"'{task2.description}' are both scheduled at {task1.time} on {task1.dueDate}."
-            )
+        for (pet_i, task_i), (pet_j, task_j) in self._pending_slot_pairs():
+            if pet_i is pet_j:
+                warnings.append(
+                    f"Conflict: {pet_i.name} has '{task_i.description}' and '{task_j.description}' "
+                    f"both scheduled at {task_i.time} on {task_i.dueDate}."
+                )
+            else:
+                warnings.append(
+                    f"Conflict: {pet_i.name}'s '{task_i.description}' and {pet_j.name}'s "
+                    f"'{task_j.description}' are both scheduled at {task_i.time} on {task_i.dueDate}."
+                )
         return warnings
