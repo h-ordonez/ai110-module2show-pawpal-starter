@@ -1,4 +1,6 @@
+import calendar
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from enum import Enum
 from typing import List, Optional
 
@@ -16,10 +18,24 @@ class Task:
     time: str  # "HH:MM" 24-hour format, e.g. "07:00"
     frequency: Frequency
     completed: bool = False
+    dueDate: date = field(default_factory=date.today)
 
     def markCompleted(self) -> None:
         """Mark this task as completed."""
         self.completed = True
+
+    def next_due_date(self) -> date:
+        """Return the date this task's next occurrence falls on, based on frequency."""
+        if self.frequency == Frequency.DAILY:
+            return self.dueDate + timedelta(days=1)
+        if self.frequency == Frequency.WEEKLY:
+            return self.dueDate + timedelta(days=7)
+        if self.frequency == Frequency.MONTHLY:
+            month = self.dueDate.month % 12 + 1
+            year = self.dueDate.year + (self.dueDate.month // 12)
+            day = min(self.dueDate.day, calendar.monthrange(year, month)[1])
+            return self.dueDate.replace(year=year, month=month, day=day)
+        raise ValueError(f"Unknown frequency: {self.frequency}")
 
 
 @dataclass
@@ -67,6 +83,18 @@ class Scheduler:
         """Remove a task from the given pet's task list."""
         if task in pet.taskList:
             pet.taskList.remove(task)
+
+    def complete_task(self, pet: Pet, task: Task) -> Task:
+        """Mark a task done and automatically schedule its next occurrence for the same pet."""
+        task.markCompleted()
+        next_task = Task(
+            description=task.description,
+            time=task.time,
+            frequency=task.frequency,
+            dueDate=task.next_due_date(),
+        )
+        self.scheduleTask(pet, next_task)
+        return next_task
 
     def getTasksByPet(self, pet: Pet) -> List[Task]:
         """Return the given pet's task list."""

@@ -83,7 +83,7 @@ else:
 
 st.markdown("### Tasks")
 st.caption("Add tasks via Scheduler.scheduleTask(), remove via Scheduler.removeTask(), "
-            "mark done via Task.markCompleted().")
+            "mark done via Scheduler.complete_task() (which also schedules the next occurrence).")
 
 if not st.session_state.owner.petList:
     st.info("Add a pet above before adding tasks.")
@@ -122,7 +122,8 @@ else:
             with tcol4:
                 done = st.checkbox("Done", value=t.completed, key=f"done_{id(t)}")
                 if done and not t.completed:
-                    t.markCompleted()
+                    st.session_state.scheduler.complete_task(selected_pet, t)
+                    st.rerun()
             with tcol5:
                 if st.button("Remove", key=f"remove_task_{id(t)}"):
                     st.session_state.scheduler.removeTask(selected_pet, t)

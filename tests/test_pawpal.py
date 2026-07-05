@@ -1,3 +1,5 @@
+from datetime import date
+
 from pawpal_system import Frequency, Owner, Pet, Scheduler, Task
 
 
@@ -113,3 +115,64 @@ def test_filter_by_status_composes_with_filter_by_pet():
     pending_rex_tasks = scheduler.filter_by_status(False, rex_tasks)
 
     assert pending_rex_tasks == [rex_pending]
+
+
+def test_complete_task_schedules_next_daily_occurrence():
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    task = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(pet, task)
+
+    next_task = scheduler.complete_task(pet, task)
+
+    assert task.completed is True
+    assert next_task.completed is False
+    assert next_task.description == "Morning walk"
+    assert next_task.time == "07:00"
+    assert next_task.dueDate == date(2026, 1, 16)
+    assert pet.taskList == [task, next_task]
+
+
+def test_complete_task_schedules_next_weekly_occurrence():
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    task = Task("Grooming", "10:00", Frequency.WEEKLY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(pet, task)
+
+    next_task = scheduler.complete_task(pet, task)
+
+    assert next_task.dueDate == date(2026, 1, 22)
+
+
+def test_complete_task_schedules_next_monthly_occurrence_across_month_end():
+    owner = Owner("Sam")
+    pet = Pet("Whiskers", "cat", 5)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    task = Task("Vet checkup", "16:00", Frequency.MONTHLY, dueDate=date(2026, 1, 31))
+    scheduler.scheduleTask(pet, task)
+
+    next_task = scheduler.complete_task(pet, task)
+
+    assert next_task.dueDate == date(2026, 2, 28)
+
+
+def test_complete_task_monthly_wraps_into_next_year():
+    owner = Owner("Sam")
+    pet = Pet("Whiskers", "cat", 5)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    task = Task("Vet checkup", "16:00", Frequency.MONTHLY, dueDate=date(2026, 12, 15))
+    scheduler.scheduleTask(pet, task)
+
+    next_task = scheduler.complete_task(pet, task)
+
+    assert next_task.dueDate == date(2027, 1, 15)
