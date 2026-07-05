@@ -203,18 +203,15 @@ def test_filter_by_pet_with_no_tasks_returns_empty_list():
     assert scheduler.filter_by_pet(rex) == []
 
 
-def test_filter_by_pet_known_limitation_leaks_value_equal_tasks_from_other_pets():
-    # KNOWN LIMITATION (not fixed here - see project handoff notes): filter_by_pet
-    # checks `t in pet.taskList`, which uses Task's value-based dataclass equality
-    # rather than object identity. So when two different pets have a task with
-    # identical field values - description, time, frequency, completed, dueDate -
-    # filtering by one pet also leaks in the other pet's value-equal task.
+def test_filter_by_pet_distinguishes_value_equal_tasks_from_other_pets():
+    # filter_by_pet compares by identity, not Task's value-based dataclass equality,
+    # so when two different pets have a task with identical field values -
+    # description, time, frequency, completed, dueDate - filtering by one pet does
+    # NOT leak in the other pet's value-equal task.
     #
     # This is not a contrived case: it's exactly the "two pets sharing the same
     # activity" scenario the app explicitly supports elsewhere (see
-    # test_cross_pet_conflicts_exempt_identical_shared_tasks). This test documents
-    # the current behavior so a future fix to Task/Pet equality is a deliberate,
-    # visible change rather than a silent one.
+    # test_cross_pet_conflicts_exempt_identical_shared_tasks).
     owner = Owner("Sam")
     rex = Pet("Rex", "dog", 3)
     fido = Pet("Fido", "dog", 2)
@@ -227,7 +224,8 @@ def test_filter_by_pet_known_limitation_leaks_value_equal_tasks_from_other_pets(
     scheduler.scheduleTask(rex, rex_walk)
     scheduler.scheduleTask(fido, fido_walk)
 
-    assert scheduler.filter_by_pet(rex) == [rex_walk, fido_walk]
+    assert scheduler.filter_by_pet(rex) == [rex_walk]
+    assert scheduler.filter_by_pet(fido) == [fido_walk]
 
 
 def test_filter_by_status_returns_only_matching_completion():

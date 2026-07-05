@@ -59,8 +59,12 @@ class Owner:
 
     def removePet(self, pet: Pet) -> None:
         """Remove a pet from this owner's pet list."""
-        if pet in self.petList:
-            self.petList.remove(pet)
+        # Identity-based, not `list.remove()`: two value-equal Pets must not
+        # cause the wrong one to be removed.
+        for i, p in enumerate(self.petList):
+            if p is pet:
+                del self.petList[i]
+                return
 
     def getTasks(self) -> List[Task]:
         """Return all tasks across every pet owned by this owner."""
@@ -81,8 +85,12 @@ class Scheduler:
 
     def removeTask(self, pet: Pet, task: Task) -> None:
         """Remove a task from the given pet's task list."""
-        if task in pet.taskList:
-            pet.taskList.remove(task)
+        # Identity-based, not `list.remove()`: two value-equal Tasks must not
+        # cause the wrong one to be removed.
+        for i, t in enumerate(pet.taskList):
+            if t is task:
+                del pet.taskList[i]
+                return
 
     def complete_task(self, pet: Pet, task: Task) -> Task:
         """Mark a task done and automatically schedule its next occurrence for the same pet."""
@@ -113,7 +121,9 @@ class Scheduler:
     def filter_by_pet(self, pet: Pet, tasks: Optional[List[Task]] = None) -> List[Task]:
         """Return only the tasks belonging to the given pet, from tasks (default: all tasks)."""
         tasks = self.getAllTasks() if tasks is None else tasks
-        return [t for t in tasks if t in pet.taskList]
+        # Identity-based, not `in`: a task value-equal to one of pet's tasks but
+        # actually owned by a different pet must not leak into the result.
+        return [t for t in tasks if any(t is owned for owned in pet.taskList)]
 
     def filter_by_status(self, completed: bool, tasks: Optional[List[Task]] = None) -> List[Task]:
         """Return only tasks whose completed flag matches, from tasks (default: all tasks)."""
