@@ -25,6 +25,87 @@ def test_scheduling_task_increases_pet_task_count():
     assert len(pet.taskList) == 1
 
 
+def test_scheduling_identical_task_twice_does_not_duplicate():
+    # scheduleTask guards with `if task not in pet.taskList`, and Task's dataclass
+    # equality is value-based, so re-adding a value-identical Task is a no-op.
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    scheduler.scheduleTask(pet, Task("Morning walk", "07:00", Frequency.DAILY))
+    scheduler.scheduleTask(pet, Task("Morning walk", "07:00", Frequency.DAILY))
+
+    assert len(pet.taskList) == 1
+
+
+def test_remove_task_removes_it_from_pets_task_list():
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    task = Task("Morning walk", "07:00", Frequency.DAILY)
+    scheduler.scheduleTask(pet, task)
+
+    scheduler.removeTask(pet, task)
+
+    assert pet.taskList == []
+
+
+def test_remove_task_not_in_list_is_a_noop():
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    task = Task("Morning walk", "07:00", Frequency.DAILY)
+    scheduler.scheduleTask(pet, task)
+
+    scheduler.removeTask(pet, Task("Evening walk", "18:00", Frequency.DAILY))
+
+    assert pet.taskList == [task]
+
+
+def test_remove_pet_removes_it_from_owners_pet_list():
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+
+    owner.removePet(pet)
+
+    assert owner.petList == []
+
+
+def test_get_tasks_by_pet_returns_only_that_pets_tasks():
+    owner = Owner("Sam")
+    rex = Pet("Rex", "dog", 3)
+    whiskers = Pet("Whiskers", "cat", 2)
+    owner.addPet(rex)
+    owner.addPet(whiskers)
+    scheduler = Scheduler(owner)
+
+    rex_task = Task("Morning walk", "07:00", Frequency.DAILY)
+    scheduler.scheduleTask(rex, rex_task)
+    scheduler.scheduleTask(whiskers, Task("Breakfast", "08:00", Frequency.DAILY))
+
+    assert scheduler.getTasksByPet(rex) == [rex_task]
+
+
+def test_get_all_tasks_aggregates_across_every_pet():
+    owner = Owner("Sam")
+    rex = Pet("Rex", "dog", 3)
+    whiskers = Pet("Whiskers", "cat", 2)
+    owner.addPet(rex)
+    owner.addPet(whiskers)
+    scheduler = Scheduler(owner)
+
+    scheduler.scheduleTask(rex, Task("Morning walk", "07:00", Frequency.DAILY))
+    scheduler.scheduleTask(whiskers, Task("Breakfast", "08:00", Frequency.DAILY))
+
+    assert len(scheduler.getAllTasks()) == 2
+
+
 def test_sort_by_time_orders_tasks_chronologically():
     owner = Owner("Sam")
     pet = Pet("Rex", "dog", 3)
@@ -54,6 +135,49 @@ def test_sort_by_time_handles_non_zero_padded_hours():
     assert [t.description for t in ordered] == ["Early walk", "Late walk"]
 
 
+def test_sort_by_time_with_no_tasks_returns_empty_list():
+    owner = Owner("Sam")
+    scheduler = Scheduler(owner)
+
+    assert scheduler.sort_by_time() == []
+
+
+def test_sort_by_time_is_stable_for_tasks_sharing_a_time():
+    # Python's sort is stable, so equal-time tasks should keep their scheduling order
+    # rather than being reordered arbitrarily - important since two tasks at the same
+    # time are exactly the case find_same_pet_conflicts is meant to flag separately.
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    first = Task("Walk", "07:00", Frequency.DAILY)
+    second = Task("Meds", "07:00", Frequency.DAILY)
+    scheduler.scheduleTask(pet, first)
+    scheduler.scheduleTask(pet, second)
+
+    ordered = scheduler.sort_by_time()
+
+    assert [t.description for t in ordered] == ["Walk", "Meds"]
+
+
+def test_sort_by_time_composes_with_filter_by_pet():
+    owner = Owner("Sam")
+    rex = Pet("Rex", "dog", 3)
+    whiskers = Pet("Whiskers", "cat", 2)
+    owner.addPet(rex)
+    owner.addPet(whiskers)
+    scheduler = Scheduler(owner)
+
+    scheduler.scheduleTask(rex, Task("Evening walk", "18:00", Frequency.DAILY))
+    scheduler.scheduleTask(rex, Task("Morning walk", "07:00", Frequency.DAILY))
+    scheduler.scheduleTask(whiskers, Task("Breakfast", "06:00", Frequency.DAILY))
+
+    ordered = scheduler.sort_by_time(scheduler.filter_by_pet(rex))
+
+    assert [t.description for t in ordered] == ["Morning walk", "Evening walk"]
+
+
 def test_filter_by_pet_returns_only_that_pets_tasks():
     owner = Owner("Sam")
     rex = Pet("Rex", "dog", 3)
@@ -77,6 +201,33 @@ def test_filter_by_pet_with_no_tasks_returns_empty_list():
     scheduler = Scheduler(owner)
 
     assert scheduler.filter_by_pet(rex) == []
+
+
+def test_filter_by_pet_known_limitation_leaks_value_equal_tasks_from_other_pets():
+    # KNOWN LIMITATION (not fixed here - see project handoff notes): filter_by_pet
+    # checks `t in pet.taskList`, which uses Task's value-based dataclass equality
+    # rather than object identity. So when two different pets have a task with
+    # identical field values - description, time, frequency, completed, dueDate -
+    # filtering by one pet also leaks in the other pet's value-equal task.
+    #
+    # This is not a contrived case: it's exactly the "two pets sharing the same
+    # activity" scenario the app explicitly supports elsewhere (see
+    # test_cross_pet_conflicts_exempt_identical_shared_tasks). This test documents
+    # the current behavior so a future fix to Task/Pet equality is a deliberate,
+    # visible change rather than a silent one.
+    owner = Owner("Sam")
+    rex = Pet("Rex", "dog", 3)
+    fido = Pet("Fido", "dog", 2)
+    owner.addPet(rex)
+    owner.addPet(fido)
+    scheduler = Scheduler(owner)
+
+    rex_walk = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    fido_walk = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(rex, rex_walk)
+    scheduler.scheduleTask(fido, fido_walk)
+
+    assert scheduler.filter_by_pet(rex) == [rex_walk, fido_walk]
 
 
 def test_filter_by_status_returns_only_matching_completion():
@@ -115,6 +266,50 @@ def test_filter_by_status_composes_with_filter_by_pet():
     pending_rex_tasks = scheduler.filter_by_status(False, rex_tasks)
 
     assert pending_rex_tasks == [rex_pending]
+
+
+def test_next_due_date_daily_advances_one_day():
+    task = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+
+    assert task.next_due_date() == date(2026, 1, 16)
+
+
+def test_next_due_date_daily_wraps_into_next_year():
+    task = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 12, 31))
+
+    assert task.next_due_date() == date(2027, 1, 1)
+
+
+def test_next_due_date_weekly_advances_seven_days():
+    task = Task("Grooming", "10:00", Frequency.WEEKLY, dueDate=date(2026, 1, 15))
+
+    assert task.next_due_date() == date(2026, 1, 22)
+
+
+def test_next_due_date_weekly_wraps_into_next_year():
+    task = Task("Grooming", "10:00", Frequency.WEEKLY, dueDate=date(2026, 12, 28))
+
+    assert task.next_due_date() == date(2027, 1, 4)
+
+
+def test_next_due_date_monthly_clamps_at_shorter_month_end():
+    task = Task("Vet checkup", "16:00", Frequency.MONTHLY, dueDate=date(2026, 1, 31))
+
+    assert task.next_due_date() == date(2026, 2, 28)
+
+
+def test_next_due_date_monthly_clamps_to_leap_day():
+    # 2028 is a leap year, so Feb has 29 days - the clamp should land on Feb 29,
+    # not skip past it the way a naive Feb 28 clamp would.
+    task = Task("Vet checkup", "16:00", Frequency.MONTHLY, dueDate=date(2028, 1, 31))
+
+    assert task.next_due_date() == date(2028, 2, 29)
+
+
+def test_next_due_date_monthly_wraps_into_next_year():
+    task = Task("Vet checkup", "16:00", Frequency.MONTHLY, dueDate=date(2026, 12, 15))
+
+    assert task.next_due_date() == date(2027, 1, 15)
 
 
 def test_complete_task_schedules_next_daily_occurrence():
@@ -178,6 +373,43 @@ def test_complete_task_monthly_wraps_into_next_year():
     assert next_task.dueDate == date(2027, 1, 15)
 
 
+def test_complete_task_does_not_mutate_original_tasks_description_or_frequency():
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    task = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(pet, task)
+
+    next_task = scheduler.complete_task(pet, task)
+
+    assert task.description == "Morning walk"
+    assert task.frequency == Frequency.DAILY
+    assert next_task.frequency == Frequency.DAILY
+    assert next_task is not task
+
+
+def test_complete_task_chains_across_repeated_completions():
+    # Completing the freshly-scheduled next occurrence should keep advancing by the
+    # same cadence, and every occurrence should accumulate on the pet's task list.
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    task = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(pet, task)
+
+    second = scheduler.complete_task(pet, task)
+    third = scheduler.complete_task(pet, second)
+
+    assert second.dueDate == date(2026, 1, 16)
+    assert third.dueDate == date(2026, 1, 17)
+    assert third.completed is False
+    assert pet.taskList == [task, second, third]
+
+
 def test_find_same_pet_conflicts_detects_overlap_for_one_pet():
     owner = Owner("Sam")
     pet = Pet("Rex", "dog", 3)
@@ -193,6 +425,46 @@ def test_find_same_pet_conflicts_detects_overlap_for_one_pet():
 
     assert conflicts == [(pet, walk, meds)]
     assert scheduler.find_cross_pet_conflicts() == []
+
+
+def test_find_same_pet_conflicts_with_three_overlapping_tasks_yields_every_pair():
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    a = Task("Walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    b = Task("Meds", "07:00", Frequency.WEEKLY, dueDate=date(2026, 1, 15))
+    c = Task("Brushing", "07:00", Frequency.MONTHLY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(pet, a)
+    scheduler.scheduleTask(pet, b)
+    scheduler.scheduleTask(pet, c)
+
+    conflicts = scheduler.find_same_pet_conflicts()
+
+    assert len(conflicts) == 3
+    assert {(t1.description, t2.description) for _, t1, t2 in conflicts} == {
+        ("Walk", "Meds"),
+        ("Walk", "Brushing"),
+        ("Meds", "Brushing"),
+    }
+
+
+def test_find_same_pet_conflicts_flags_identical_descriptions_on_same_pet():
+    # Unlike the cross-pet exemption, two tasks on the SAME pet at the same slot are
+    # always a conflict even if they share a description - a pet can't run "Walk" on
+    # both a daily and a weekly cadence at once, so this must not be silently exempted.
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    daily_walk = Task("Walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    weekly_walk = Task("Walk", "07:00", Frequency.WEEKLY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(pet, daily_walk)
+    scheduler.scheduleTask(pet, weekly_walk)
+
+    assert scheduler.find_same_pet_conflicts() == [(pet, daily_walk, weekly_walk)]
 
 
 def test_find_cross_pet_conflicts_detects_overlap_across_pets():
@@ -241,6 +513,34 @@ def test_conflicts_ignore_completed_tasks():
     walk.markCompleted()
 
     assert scheduler.find_same_pet_conflicts() == []
+
+
+def test_conflicts_ignore_completed_tasks_across_pets():
+    owner = Owner("Sam")
+    rex = Pet("Rex", "dog", 3)
+    whiskers = Pet("Whiskers", "cat", 5)
+    owner.addPet(rex)
+    owner.addPet(whiskers)
+    scheduler = Scheduler(owner)
+
+    rex_walk = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    whiskers_breakfast = Task("Breakfast", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(rex, rex_walk)
+    scheduler.scheduleTask(whiskers, whiskers_breakfast)
+    rex_walk.markCompleted()
+
+    assert scheduler.find_cross_pet_conflicts() == []
+
+
+def test_find_conflicts_with_no_tasks_returns_empty_lists():
+    owner = Owner("Sam")
+    pet = Pet("Rex", "dog", 3)
+    owner.addPet(pet)
+    scheduler = Scheduler(owner)
+
+    assert scheduler.find_same_pet_conflicts() == []
+    assert scheduler.find_cross_pet_conflicts() == []
+    assert scheduler.get_conflict_warnings() == []
 
 
 def test_get_conflict_warnings_reports_both_kinds():
@@ -293,3 +593,27 @@ def test_cross_pet_conflicts_still_flag_different_tasks_at_same_time():
     scheduler.scheduleTask(whiskers, whiskers_breakfast)
 
     assert scheduler.find_cross_pet_conflicts() == [(rex, rex_walk, whiskers, whiskers_breakfast)]
+
+
+def test_find_cross_pet_conflicts_with_three_pets_in_same_slot_yields_every_pair():
+    owner = Owner("Sam")
+    rex = Pet("Rex", "dog", 3)
+    whiskers = Pet("Whiskers", "cat", 5)
+    tweety = Pet("Tweety", "bird", 1)
+    owner.addPet(rex)
+    owner.addPet(whiskers)
+    owner.addPet(tweety)
+    scheduler = Scheduler(owner)
+
+    rex_walk = Task("Morning walk", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    whiskers_breakfast = Task("Breakfast", "07:00", Frequency.DAILY, dueDate=date(2026, 1, 15))
+    tweety_cage_clean = Task("Clean cage", "07:00", Frequency.WEEKLY, dueDate=date(2026, 1, 15))
+    scheduler.scheduleTask(rex, rex_walk)
+    scheduler.scheduleTask(whiskers, whiskers_breakfast)
+    scheduler.scheduleTask(tweety, tweety_cage_clean)
+
+    conflicts = scheduler.find_cross_pet_conflicts()
+
+    assert len(conflicts) == 3
+    pet_pairs = {(p1.name, p2.name) for p1, _, p2, _ in conflicts}
+    assert pet_pairs == {("Rex", "Whiskers"), ("Rex", "Tweety"), ("Whiskers", "Tweety")}

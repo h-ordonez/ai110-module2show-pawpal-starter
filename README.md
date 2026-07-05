@@ -62,6 +62,8 @@ Whiskers (cat):
 
 ## 🧪 Testing PawPal+
 
+The command I used to run tests was `python -m pytest`. There are 43 tests in all and they cover all methods pawpal_system.py. The methods they cover implement sorting, filtering, automation of recurring tasks, and basic conflict detection.
+
 ```bash
 # Run the full test suite:
 pytest
@@ -73,8 +75,19 @@ pytest --cov
 Sample test output:
 
 ```
-# Paste your pytest output here
+(.venv) PS C:\Users\hordo\Projects\ai110-module2show-pawpal-starter> pytest
+====================================================================== test session starts =======================================================================
+platform win32 -- Python 3.14.5, pytest-9.1.1, pluggy-1.6.0
+rootdir: C:\Users\hordo\Projects\ai110-module2show-pawpal-starter
+plugins: anyio-4.14.0, cov-7.1.0
+collected 43 items                                                                                                                                                
+
+tests\test_pawpal.py ...........................................                                                                                            [100%]
+
+======================================================================= 43 passed in 0.06s =======================================================================
 ```
+
+My confidence level in the system's reliability is 4/5 stars. This is because the tests offer great coverage as I found out when running `pytest --cov`. However, the reason why I don't give it the full 5/5 stars is because I have yet to see it deployed and used by a lot of people. If it were to actually be deployed to a large population, I would not be surprised if some more bugs were uncovered as is so often the case.
 
 ## 📐 Smarter Scheduling
 
