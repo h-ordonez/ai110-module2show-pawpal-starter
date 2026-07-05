@@ -1,6 +1,18 @@
-from datetime import time
-
 from pawpal_system import Frequency, Owner, Pet, Scheduler, Task
+
+
+def format_12h(hhmm: str) -> str:
+    """Render a "HH:MM" 24-hour string as "HH:MM AM/PM" for display."""
+    hour, minute = (int(part) for part in hhmm.split(":"))
+    period = "AM" if hour < 12 else "PM"
+    hour12 = hour % 12 or 12
+    return f"{hour12:02d}:{minute:02d} {period}"
+
+
+def print_tasks(tasks) -> None:
+    for task in tasks:
+        status = "done" if task.completed else "pending"
+        print(f"  {format_12h(task.time)} - {task.description} ({status})")
 
 
 def main() -> None:
@@ -14,19 +26,41 @@ def main() -> None:
 
     scheduler = Scheduler(owner)
 
-    scheduler.scheduleTask(rex, Task("Morning walk", time(7, 0), Frequency.DAILY))
-    scheduler.scheduleTask(rex, Task("Lunchtime feeding", time(12, 0), Frequency.DAILY))
-    scheduler.scheduleTask(rex, Task("Evening walk", time(18, 30), Frequency.DAILY))
+    # Added out of time-order on purpose, to exercise filter_by_pet / filter_by_status
+    # independent of any sorting.
+    evening_walk = Task("Evening walk", "18:30", Frequency.DAILY)
+    morning_walk = Task("Morning walk", "07:00", Frequency.DAILY)
+    lunch_feeding = Task("Lunchtime feeding", "12:00", Frequency.DAILY)
+    scheduler.scheduleTask(rex, evening_walk)
+    scheduler.scheduleTask(rex, morning_walk)
+    scheduler.scheduleTask(rex, lunch_feeding)
+    morning_walk.markCompleted()
 
-    scheduler.scheduleTask(whiskers, Task("Breakfast", time(8, 0), Frequency.DAILY))
-    scheduler.scheduleTask(whiskers, Task("Litter box cleaning", time(13, 30), Frequency.DAILY))
-    scheduler.scheduleTask(whiskers, Task("Vet checkup", time(16, 0), Frequency.MONTHLY))
+    vet_checkup = Task("Vet checkup", "16:00", Frequency.MONTHLY)
+    breakfast = Task("Breakfast", "08:00", Frequency.DAILY)
+    litter_cleaning = Task("Litter box cleaning", "13:30", Frequency.DAILY)
+    scheduler.scheduleTask(whiskers, vet_checkup)
+    scheduler.scheduleTask(whiskers, breakfast)
+    scheduler.scheduleTask(whiskers, litter_cleaning)
+    breakfast.markCompleted()
+    litter_cleaning.markCompleted()
 
     print("Today's Schedule")
     for pet in owner.petList:
         print(f"\n{pet.name} ({pet.species}):")
-        for task in scheduler.getTasksByPet(pet):
-            print(f"  {task.time.strftime('%I:%M %p')} - {task.description}")
+        print_tasks(scheduler.getTasksByPet(pet))
+
+    print("\nfilter_by_pet(rex):")
+    print_tasks(scheduler.filter_by_pet(rex))
+
+    print("\nfilter_by_pet(whiskers):")
+    print_tasks(scheduler.filter_by_pet(whiskers))
+
+    print("\nfilter_by_status(completed=True):")
+    print_tasks(scheduler.filter_by_status(True))
+
+    print("\nfilter_by_status(completed=False):")
+    print_tasks(scheduler.filter_by_status(False))
 
 
 if __name__ == "__main__":

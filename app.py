@@ -103,7 +103,7 @@ else:
     if st.button("Add task"):
         new_task = Task(
             description=task_title,
-            time=task_time,
+            time=task_time.strftime("%H:%M"),
             frequency=Frequency(task_frequency),
         )
         st.session_state.scheduler.scheduleTask(selected_pet, new_task)
@@ -116,7 +116,7 @@ else:
             with tcol1:
                 st.write(t.description)
             with tcol2:
-                st.write(t.time.strftime("%H:%M"))
+                st.write(t.time)
             with tcol3:
                 st.write(t.frequency.value)
             with tcol4:
@@ -144,16 +144,17 @@ if st.button("Generate schedule"):
     if not pet_tasks:
         st.info("No tasks to schedule yet. Add some tasks above.")
     else:
-        ordered = sorted(pet_tasks, key=lambda pt: pt[1].time)
+        pet_by_task_id = {id(t): p for p, t in pet_tasks}
+        ordered = st.session_state.scheduler.sort_by_time([t for _, t in pet_tasks])
         st.write("Today's plan:")
         st.table(
             [
                 {
-                    "time": t.time.strftime("%H:%M"),
-                    "pet": p.name,
+                    "time": t.time,
+                    "pet": pet_by_task_id[id(t)].name,
                     "task": t.description,
                     "frequency": t.frequency.value,
                 }
-                for p, t in ordered
+                for t in ordered
             ]
         )

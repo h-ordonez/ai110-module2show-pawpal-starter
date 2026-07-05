@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
-from datetime import time
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 
 class Frequency(Enum):
@@ -14,7 +13,7 @@ class Frequency(Enum):
 @dataclass
 class Task:
     description: str
-    time: time
+    time: str  # "HH:MM" 24-hour format, e.g. "07:00"
     frequency: Frequency
     completed: bool = False
 
@@ -77,3 +76,18 @@ class Scheduler:
         """Return all tasks across every pet for the owner."""
         # Delegate to Owner rather than re-walking petList here.
         return self.owner.getTasks()
+
+    def sort_by_time(self, tasks: Optional[List[Task]] = None) -> List[Task]:
+        """Return tasks sorted chronologically by their "HH:MM" time string."""
+        tasks = self.getAllTasks() if tasks is None else tasks
+        return sorted(tasks, key=lambda t: tuple(int(part) for part in t.time.split(":")))
+
+    def filter_by_pet(self, pet: Pet, tasks: Optional[List[Task]] = None) -> List[Task]:
+        """Return only the tasks belonging to the given pet, from tasks (default: all tasks)."""
+        tasks = self.getAllTasks() if tasks is None else tasks
+        return [t for t in tasks if t in pet.taskList]
+
+    def filter_by_status(self, completed: bool, tasks: Optional[List[Task]] = None) -> List[Task]:
+        """Return only tasks whose completed flag matches, from tasks (default: all tasks)."""
+        tasks = self.getAllTasks() if tasks is None else tasks
+        return [t for t in tasks if t.completed == completed]
